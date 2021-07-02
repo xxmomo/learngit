@@ -1,0 +1,30 @@
+_BASE_: "Base-OneNet.yaml"
+MODEL:
+  WEIGHTS: "/home/user/codes/xx/OneNet/models/dla34+tricks-24a49e58.pth"
+  BACKBONE:
+    NAME: "build_dla_backbone"
+    FREEZE_AT: -1 #不行的话改成-1
+  DLA: 
+    NORM: "BN"
+    CONV_BODY: "DLA34"
+  # FPN:
+  #   IN_FEATURES: ["level3", "level4", "level5", "level6"]
+  OneNet:
+    DCN: True
+    NUM_CLASSES: 15
+    DECONV_CHANNEL: (512, 256, 128, 64)
+    IN_FEATURES: ["level2", "level3", "level4", "level5"]
+DATASETS:
+  # TRAIN: ("coco_2017_train",)
+  # TEST:  ("coco_2017_val",)
+  TRAIN: ("voc_2007_train",)
+  TEST:  ("voc_2007_val",)
+SOLVER:
+  IMS_PER_BATCH: 12
+  STEPS: (50000, 70000)
+  MAX_ITER: 100000
+INPUT:
+  CROP:
+    ENABLED: True
+  FORMAT: "RGB"
+OUTPUT_DIR: 'output_onenet_dla34dcn_dota'

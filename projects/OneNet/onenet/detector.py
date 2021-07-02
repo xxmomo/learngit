@@ -8,6 +8,7 @@ import math
 from typing import List
 
 import numpy as np
+from numpy.core.fromnumeric import trace
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
@@ -95,7 +96,8 @@ class OneNet(nn.Module):
                 * "height", "width" (int): the output resolution of the model, used in inference.
                   See :meth:`postprocess` for details.
         """
-        images, images_whwh = self.preprocess_image(batched_inputs)
+        # images, images_whwh = self.preprocess_image(batched_inputs) #Onenet原始
+        images = self.preprocess_image(batched_inputs) #xx写
         if isinstance(images, (list, torch.Tensor)):
             images = nested_tensor_from_tensor_list(images)
 
@@ -110,10 +112,12 @@ class OneNet(nn.Module):
         outputs_class, outputs_coord = self.head(features)
         
         output = {'pred_logits': outputs_class, 'pred_boxes': outputs_coord}
+        # print("output:" , output)
 
         if self.training:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             targets = self.prepare_targets(gt_instances)
+            # print("targets:" , targets)
             loss_dict = self.criterion(output, targets)
             
             weight_dict = self.criterion.weight_dict
@@ -142,10 +146,13 @@ class OneNet(nn.Module):
         for targets_per_image in targets:
             target = {}
             h, w = targets_per_image.image_size
-            image_size_xyxy = torch.as_tensor([w, h, w, h], dtype=torch.float, device=self.device)
+            # theta = targets_per_image.tensor(-1)
+            image_size_xyxy = torch.as_tensor([w, h, w, h, 1], dtype=torch.float, device=self.device) #归一化
             gt_classes = targets_per_image.gt_classes
             gt_boxes = targets_per_image.gt_boxes.tensor / image_size_xyxy
-            gt_boxes = box_xyxy_to_cxcywh(gt_boxes)
+            # print(gt_boxes)
+            gt_boxes = box_xyxy_to_cxcywh(gt_boxes) #这里有问题
+            # gt_boxes = math.radians(gt_boxes[:,-1]) #如果角度是度数的话转成弧度，就需要这一步
             target["labels"] = gt_classes.to(self.device)
             target["boxes"] = gt_boxes.to(self.device)
             target["boxes_xyxy"] = targets_per_image.gt_boxes.tensor.to(self.device)
@@ -207,19 +214,28 @@ class OneNet(nn.Module):
 
         return results
 
+#Onenet的
+#     def preprocess_image(self, batched_inputs):
+#         """
+#         Normalize, pad and batch the input images.
+#         """
+#         images = [self.normalizer(x["image"].to(self.device)) for x in batched_inputs]
+
+# #         images = ImageList.from_tensors(images, self.size_divisibility)
+#         images = ImageList.from_tensors(images, 32)
+
+#         images_whwh = list()
+#         for bi in batched_inputs:
+#             h, w = bi["image"].shape[-2:]
+#             images_whwh.append(torch.tensor([w, h, w, h], dtype=torch.float32, device=self.device))
+#         images_whwh = torch.stack(images_whwh)
+
+#自己写的
     def preprocess_image(self, batched_inputs):
         """
         Normalize, pad and batch the input images.
         """
-        images = [self.normalizer(x["image"].to(self.device)) for x in batched_inputs]
-
-#         images = ImageList.from_tensors(images, self.size_divisibility)
-        images = ImageList.from_tensors(images, 32)
-
-        images_whwh = list()
-        for bi in batched_inputs:
-            h, w = bi["image"].shape[-2:]
-            images_whwh.append(torch.tensor([w, h, w, h], dtype=torch.float32, device=self.device))
-        images_whwh = torch.stack(images_whwh)
-
-        return images, images_whwh
+        images = [x["image"].to(self.device) for x in batched_inputs]
+        images = [self.normalizer(x) for x in images]
+        images = ImageList.from_tensors(images, self.backbone.size_divisibility)
+        return images

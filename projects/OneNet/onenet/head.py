@@ -43,7 +43,7 @@ class Head(nn.Module):
         self.feat1 = nn.Conv2d(self.d_model, self.d_model, kernel_size=3, stride=1, padding=1)
         self.cls_score = nn.Conv2d(d_model, num_classes, kernel_size=3, stride=1, padding=1)
         self.ltrb_pred = nn.Conv2d(d_model, 4, kernel_size=3, stride=1, padding=1)        
-        
+        self.angle_pred = nn.Conv2d(d_model, 1, kernel_size=3, stride=1, padding=1)  #xx加
         # Init parameters.
         prior_prob = cfg.MODEL.OneNet.PRIOR_PROB
         self.bias_value = -math.log((1 - prior_prob) / prior_prob)
@@ -66,15 +66,20 @@ class Head(nn.Module):
         feat = self.activation(self.feat1(features))
     
         class_logits = self.cls_score(feat)
-        pred_ltrb = F.relu(self.ltrb_pred(feat))
+        pred_ltrb = F.relu(self.ltrb_pred(feat)) #3x3卷积加relu激活
+        # print("pred_ltrb:", pred_ltrb)
+        # print("pred_ltrb.shape:", pred_ltrb.shape)
+        pred_angle = F.relu(self.angle_pred(feat))
         pred_bboxes = self.apply_ltrb(locations, pred_ltrb)
+        pred_bboxes = torch.cat((pred_bboxes,pred_angle),1) #xx加
+        print("pred_bboxes.shape:", pred_bboxes.shape)
 
         return class_logits, pred_bboxes
     
     def apply_ltrb(self, locations, pred_ltrb): 
         """
         :param locations:  (1, 2, H, W)
-        :param pred_ltrb:  (N, 4, H, W) 
+        # :param pred_ltrb:  (N, 4, H, W)  
         """
 
         pred_boxes = torch.zeros_like(pred_ltrb)
@@ -82,6 +87,7 @@ class Head(nn.Module):
         pred_boxes[:,1,:,:] = locations[:,1,:,:] - pred_ltrb[:,1,:,:]  # y1
         pred_boxes[:,2,:,:] = locations[:,0,:,:] + pred_ltrb[:,2,:,:]  # x2
         pred_boxes[:,3,:,:] = locations[:,1,:,:] + pred_ltrb[:,3,:,:]  # y2
+        # pred_boxes[:,4,:,:] = pred_ltrb[:,4,:,:]  # theta #这样就可以算出theta？？？？
 
         return pred_boxes    
     
@@ -89,12 +95,12 @@ class Head(nn.Module):
     def locations(self, features, stride=4):
         """
         Arguments:
-            features:  (N, C, H, W)
+            features:  (N, C, H, W, θ)  #原features:  (N, C, H, W)
         Return:
             locations:  (2, H, W)
         """
 
-        h, w = features.size()[-2:]
+        h, w = features.size()[-2:] #是否需要根据角度来换wh位置??????feature是否包含角度--否
         device = features.device
         
         shifts_x = torch.arange(

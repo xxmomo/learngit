@@ -11,6 +11,8 @@ from .backbone import (
     build_backbone,
     build_resnet_backbone,
     make_stage,
+    build_dla_backbone,
+    DLA,
 )
 from .meta_arch import (
     META_ARCH_REGISTRY,

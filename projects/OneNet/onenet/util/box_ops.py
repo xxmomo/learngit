@@ -3,6 +3,10 @@
 Utilities for bounding box manipulation and GIoU.
 """
 import torch
+import cv2
+import numpy as np
+# from torch._C import float32
+# from torch._C import R
 from torchvision.ops.boxes import box_area
 
 
@@ -14,7 +18,8 @@ def box_cxcywh_to_xyxy(x):
 
 
 def box_xyxy_to_cxcywh(x):
-    x0, y0, x1, y1 = x.unbind(-1)
+    y = x[:, 0:4]
+    x0, y0, x1, y1 = y.unbind(-1)
     b = [(x0 + x1) / 2, (y0 + y1) / 2,
          (x1 - x0), (y1 - y0)]
     return torch.stack(b, dim=-1)
@@ -35,6 +40,37 @@ def box_iou(boxes1, boxes2):
 
     iou = inter / union
     return iou, union
+
+#旋转iou
+def iou_rotate_calculate(boxes1, boxes2):
+    device = torch.device('cuda' if torch.cuda.is_available else 'cpu')
+    area1 = boxes1[:, 2] * boxes1[:, 3]
+    area2 = boxes2[:, 2] * boxes2[:, 3]
+    ious = []
+    for i, box1 in enumerate(boxes1):
+        temp_ious = []
+        # opencv必须读整型数据，要把r1，r2变成整型
+        r1 = [[int(box1[0]), int(box1[1])], [int(box1[2]), int(box1[3])], int(box1[4])]
+
+        for j, box2 in enumerate(boxes2):
+            r2 = [[int(box2[0]), int(box2[1])], [int(box2[2]), int(box2[3])], int(box2[4])]
+            # 这个函数计算两个旋转矩形的交集，返回值维0，1，2分别表示没有，有，包含；
+            # 以及交点的坐标的一个array很遗憾的是这个坐标是不是逆时针也不是顺时针。
+            # 而cv2.contourArea()需要点是顺时针或者逆时针，解决办法？？？
+
+            int_pts = cv2.rotatedRectangleIntersection(r1, r2)[1]  # 获得交点坐标的array
+            if int_pts is not None:
+                order_pts = cv2.convexHull(int_pts, returnPoints=True)  # 返回凸包上点的坐标
+                # 计算轮廓的面积，就是算包括boxes1 和boxes2最小外包面积
+                int_area = cv2.contourArea(order_pts)
+
+                inter = int_area * 1.0 / (area1[i] + area2[j] - int_area)
+                temp_ious.append(inter)
+            else:
+                temp_ious.append(0.0)
+        ious.append(temp_ious)
+    return torch.tensor(ious, dtype=torch.float32).to(device)
+    # return np.array(ious, dtype=np.float32)
 
 
 def generalized_box_iou(boxes1, boxes2):

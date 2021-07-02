@@ -27,7 +27,8 @@ from .cityscapes_panoptic import register_all_cityscapes_panoptic
 from .coco import load_sem_seg, register_coco_instances
 from .coco_panoptic import register_coco_panoptic, register_coco_panoptic_separated
 from .lvis import get_lvis_instances_meta, register_lvis_instances
-from .pascal_voc import register_pascal_voc
+# from .pascal_voc import register_pascal_voc
+from .pascal_voc import register_pascal_voc, load_voc_instances
 
 # ==== Predefined datasets and splits for COCO ==========
 

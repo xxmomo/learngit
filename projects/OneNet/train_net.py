@@ -8,20 +8,23 @@ OneNet Training Script.
 
 This script is a simplified version of the training script in detectron2/tools.
 """
-
 import os
 import itertools
 import time
 from typing import Any, Dict, List, Set
-
 import torch
 
 import detectron2.utils.comm as comm
+
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
+
 from detectron2.data import MetadataCatalog, build_detection_train_loader
+
 from detectron2.engine import AutogradProfiler, DefaultTrainer, default_argument_parser, default_setup, launch
+print('无错误')
 from detectron2.evaluation import COCOEvaluator, verify_results
+
 from detectron2.solver.build import maybe_add_gradient_clipping
 
 from onenet import OneNetDatasetMapper, add_onenet_config
@@ -42,7 +45,8 @@ class Trainer(DefaultTrainer):
         """
         if output_folder is None:
             output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
-        return COCOEvaluator(dataset_name, cfg, True, output_folder)
+        #用dota的时候这里要改成Pascal_voc的评价标准
+        return COCOEvaluator(dataset_name, cfg, True, output_folder) 
 
     @classmethod
     def build_train_loader(cls, cfg):

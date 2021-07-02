@@ -1,6 +1,6 @@
 _BASE_: "Base-OneNet.yaml"
 MODEL:
-  WEIGHTS: "torchvision-R-18.pkl"
+  WEIGHTS: "models/torchvision-R-18.pkl"
   BACKBONE:
       FREEZE_AT: 0
   RESNETS:
@@ -10,15 +10,15 @@ MODEL:
     RES2_OUT_CHANNELS: 64
   OneNet:
     DCN: True
-    NUM_CLASSES: 80
+    NUM_CLASSES: 10
     DECONV_CHANNEL: (512, 256, 128, 64)
 DATASETS:
   TRAIN: ("coco_2017_train",)
   TEST:  ("coco_2017_val",)
 SOLVER:
-  IMS_PER_BATCH: 64
-  STEPS: (210000, 250000)
-  MAX_ITER: 270000
+  IMS_PER_BATCH: 32
+  STEPS: (20000, 25000)
+  MAX_ITER: 30000
 INPUT:
   CROP:
     ENABLED: True

@@ -41,6 +41,8 @@ _C.MODEL.PIXEL_MEAN = [103.530, 116.280, 123.675]
 # Otherwise, you can use [57.375, 57.120, 58.395] (ImageNet std)
 _C.MODEL.PIXEL_STD = [1.0, 1.0, 1.0]
 
+# _C.MODEL.AVOD.ROTA_AUG_ON = True #DOTA
+
 
 # -----------------------------------------------------------------------------
 # INPUT
